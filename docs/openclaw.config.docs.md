@@ -195,24 +195,26 @@ qa    → 可调用 → rd / pm
 > ⚠️ 权限是单向的。A 可以调用 B，不代表 B 可以调用 A，需双向配置。
 
 ## 4. 渠道配置 channels
-定义消息来源渠道，目前支持飞书（feishu）等平台。
+定义消息来源渠道，支持飞书、Telegram、Slack、Discord 等平台。
+
+### 4.1 飞书配置
 
 ```json
 "channels": {
   "feishu": {
     "accounts": {
-      "feishu-bot-pm": {            // 账号标识，自定义命名
+      "feishu-bot-pm": {
         "enabled": true,
         "appId": "cli_xxxxxxxx",         // 飞书应用 App ID
         "appSecret": "xxxxxxxxxxxx",     // 飞书应用 App Secret
         "connectionMode": "websocket",   // 连接方式：websocket（推荐）或 polling
         "domain": "feishu",              // 平台域（feishu / lark）
         "groupPolicy": "open",           // 群组策略：open=加入所有群, allowlist=白名单
-        "allowBots": "mentions",         // 是否处理其他 Bot 消息：mentions/all/none
+        "allowBots": "mentions",        // 是否处理其他 Bot 消息：mentions/all/none
         "groups": {
           "*": {
-            "requireMention": false,     // 是否必须 @ 才响应，false=全部消息都响应
-            "allowBots": true            // 该群是否处理 Bot 消息
+            "requireMention": true,     // 是否必须 @ 才响应
+            "allowBots": true
           }
         }
       }
@@ -221,9 +223,87 @@ qa    → 可调用 → rd / pm
 }
 ```
 
-### 多 Bot 账号
+### 4.2 Telegram 配置
 
-每个 Agent 独占一个飞书 Bot 账号，账号之间互相隔离：
+```json
+"channels": {
+  "telegram": {
+    "accounts": {
+      "telegram-bot-pm": {
+        "enabled": true,
+        "botToken": "123456789:ABCdefGHIjklMNOpqrsTUVwxyz"  // Telegram Bot Token
+      },
+      "telegram-bot-rd": {
+        "enabled": true,
+        "botToken": "..."
+      },
+      "telegram-bot-qa": {
+        "enabled": true,
+        "botToken": "..."
+      },
+      "telegram-bot-ce": {
+        "enabled": true,
+        "botToken": "..."
+      }
+    }
+  }
+}
+```
+
+> 💡 Telegram 不需要 `requireMention` 配置，每个 Bot 会接收所有发送到该 Bot 的消息。
+
+### 4.3 Slack 配置
+
+```json
+"channels": {
+  "slack": {
+    "accounts": {
+      "slack-bot-pm": {
+        "enabled": true,
+        "botToken": "xoxb-...",     // Bot User OAuth Token
+        "appToken": "xoxb-..."      // App-Level Token（用于 WebSocket）
+      },
+      "slack-bot-rd": {
+        "enabled": true,
+        "botToken": "xoxb-...",
+        "appToken": "xoxb-..."
+      }
+    }
+  }
+}
+```
+
+### 4.4 Discord 配置
+
+```json
+"channels": {
+  "discord": {
+    "accounts": {
+      "discord-bot-pm": {
+        "enabled": true,
+        "token": "MTIzNDU2Nzg5MDEyMzQ1Njc4.Gx.xxxx"  // Discord Bot Token
+      },
+      "discord-bot-rd": {
+        "enabled": true,
+        "token": "..."
+      }
+    }
+  }
+}
+```
+
+### 4.5 渠道选择建议
+
+| 渠道 | 适用场景 | 多 Bot 需求 | 特殊配置 |
+|------|---------|------------|---------|
+| 飞书 | 国内团队协作 | 4 个 Bot | requireMention |
+| Telegram | 国际项目、开源 | 4 个 Bot | 无特殊配置 |
+| Slack | 企业协作 | 4 个 Bot | botToken + appToken |
+| Discord | 社区、开发者 | 4 个 Bot | 仅需 token |
+
+### 4.6 多 Bot 账号
+
+每个 Agent 独占一个渠道账号，账号之间互相隔离：
 
 ```json
 "accounts": {
@@ -459,15 +539,21 @@ qa    → 可调用 → rd / pm
 2. `tools.agentToAgent.allow` — 加入 A2A 白名单
 3. `bindings` — 绑定到对应渠道账号（如果该 Agent 需要直接接收消息）
 
-**Q：两个 Agent 可以共用同一个飞书 Bot 吗？**
+**Q：两个 Agent 可以共用同一个渠道 Bot 吗？**
 
-不建议。每个 Bot 账号同时只能绑定一个 Agent。共用会导致消息路由混乱。
+不建议。每个 Bot 账号同时只能绑定一个 Agent。共用会导致消息路由混乱。无论是飞书、Telegram 还是其他渠道，都建议每个 Agent 独占一个 Bot。
 
-**Q：`maxPingPongTurns` 设多少合适？**
+**Q：不同渠道的 Bot 需要配置哪些字段？**
 
-一般设 `5~10`。数值太小会导致 Agent 任务未完成就中断；太大可能陷入无意义的来回对话消耗 token。对于明确单向流转（如 PM→RD）的场景，`5` 已足够。
+| 渠道 | 必填字段 |
+|------|---------|
+| 飞书 | appId, appSecret |
+| Telegram | botToken |
+| Slack | botToken, appToken |
+| Discord | token |
 
 **Q：`requireMention: false` 和 `requireMention: true` 的区别？**
 
 - `false`：群里所有消息 Agent 都会处理，适合 CE（鼓励师）这类需要主动感知氛围的 Agent
 - `true`：只有 @ 该 Bot 时才处理，适合 RD、QA 等按需调用的 Agent
+- 注意：Telegram 不支持此配置，每个 Bot 会接收所有发送到该 Bot 的消息

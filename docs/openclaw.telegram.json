@@ -1,0 +1,249 @@
+{
+  "meta": {
+    "lastTouchedVersion": "2026.3.2",
+    "lastTouchedAt": "2026-03-06T00:00:00.000Z",
+    "channel": "telegram"
+  },
+  "models": {
+    "mode": "merge",
+    "providers": {
+      "zai": {
+        "baseUrl": "https://open.bigmodel.cn/api/coding/paas/v4",
+        "api": "openai-completions",
+        "models": [
+          {
+            "id": "glm-5",
+            "name": "GLM-5",
+            "reasoning": true,
+            "input": ["text"],
+            "cost": {
+              "input": 0,
+              "output": 0,
+              "cacheRead": 0,
+              "cacheWrite": 0
+            },
+            "contextWindow": 204800,
+            "maxTokens": 131072
+          }
+        ]
+      }
+    }
+  },
+  "agents": {
+    "defaults": {
+      "model": {
+        "primary": "zai/glm-5"
+      },
+      "models": {
+        "zai/glm-5": {
+          "alias": "GLM"
+        }
+      },
+      "workspace": "/root/.openclaw/workspace",
+      "compaction": {
+        "mode": "safeguard"
+      },
+      "maxConcurrent": 4,
+      "subagents": {
+        "maxConcurrent": 8
+      }
+    },
+    "list": [
+      {
+        "id": "pm",
+        "workspace": "/root/.openclaw/workspace-pm",
+        "agentDir": "/root/.openclaw/workspace-pm",
+        "identity": {
+          "name": "项目经理",
+          "emoji": "🧩"
+        },
+        "groupChat": {
+          "mentionPatterns": [
+            "@项目经理",
+            "项目经理",
+            "@产品经理",
+            "产品经理",
+            "pm"
+          ]
+        },
+        "subagents": {
+          "allowAgents": ["rd", "qa", "ce"]
+        }
+      },
+      {
+        "id": "rd",
+        "workspace": "/root/.openclaw/workspace-rd",
+        "agentDir": "/root/.openclaw/workspace-rd",
+        "identity": {
+          "name": "工程师",
+          "emoji": "💻"
+        },
+        "groupChat": {
+          "mentionPatterns": [
+            "@工程师",
+            "工程师",
+            "rd",
+            "码农"
+          ]
+        },
+        "subagents": {
+          "allowAgents": ["pm"]
+        }
+      },
+      {
+        "id": "qa",
+        "workspace": "/root/.openclaw/workspace-qa",
+        "agentDir": "/root/.openclaw/workspace-qa",
+        "identity": {
+          "name": "测试工程师",
+          "emoji": "🔍"
+        },
+        "groupChat": {
+          "mentionPatterns": [
+            "@测试",
+            "测试工程师",
+            "qa"
+          ]
+        },
+        "subagents": {
+          "allowAgents": ["pm", "rd"]
+        }
+      },
+      {
+        "id": "ce",
+        "workspace": "/root/.openclaw/workspace-ce",
+        "agentDir": "/root/.openclaw/workspace-ce",
+        "identity": {
+          "name": "小美",
+          "emoji": "🌸"
+        },
+        "groupChat": {
+          "mentionPatterns": [
+            "@小美",
+            "小美",
+            "ce",
+            "鼓励师"
+          ]
+        },
+        "subagents": {
+          "allowAgents": ["pm", "rd", "qa"]
+        }
+      }
+    ]
+  },
+  "tools": {
+    "profile": "full",
+    "agentToAgent": {
+      "enabled": true,
+      "allow": ["pm", "rd", "qa", "ce"]
+    },
+    "sessions": {
+      "visibility": "all"
+    }
+  },
+  "bindings": [
+    {
+      "agentId": "pm",
+      "match": {
+        "channel": "telegram",
+        "accountId": "telegram-bot-pm"
+      }
+    },
+    {
+      "agentId": "rd",
+      "match": {
+        "channel": "telegram",
+        "accountId": "telegram-bot-rd"
+      }
+    },
+    {
+      "agentId": "qa",
+      "match": {
+        "channel": "telegram",
+        "accountId": "telegram-bot-qa"
+      }
+    },
+    {
+      "agentId": "ce",
+      "match": {
+        "channel": "telegram",
+        "accountId": "telegram-bot-ce"
+      }
+    }
+  ],
+  "messages": {
+    "ackReactionScope": "group-mentions"
+  },
+  "commands": {
+    "native": "auto",
+    "nativeSkills": "auto",
+    "restart": true,
+    "ownerDisplay": "raw"
+  },
+  "session": {
+    "dmScope": "per-channel-peer",
+    "agentToAgent": {
+      "maxPingPongTurns": 5
+    }
+  },
+  "channels": {
+    "telegram": {
+      "accounts": {
+        "telegram-bot-pm": {
+          "enabled": true,
+          "botToken": "YOUR_PM_BOT_TOKEN"
+        },
+        "telegram-bot-rd": {
+          "enabled": true,
+          "botToken": "YOUR_RD_BOT_TOKEN"
+        },
+        "telegram-bot-qa": {
+          "enabled": true,
+          "botToken": "YOUR_QA_BOT_TOKEN"
+        },
+        "telegram-bot-ce": {
+          "enabled": true,
+          "botToken": "YOUR_CE_BOT_TOKEN"
+        }
+      }
+    }
+  },
+  "gateway": {
+    "port": 18789,
+    "mode": "local",
+    "bind": "loopback",
+    "controlUi": {
+      "allowedOrigins": [
+        "http://localhost:18789",
+        "http://127.0.0.1:18789"
+      ]
+    },
+    "auth": {
+      "mode": "token",
+      "token": "REPLACE_WITH_YOUR_STRONG_RANDOM_TOKEN"
+    },
+    "tailscale": {
+      "mode": "off",
+      "resetOnExit": false
+    },
+    "nodes": {
+      "denyCommands": [
+        "camera.snap",
+        "camera.clip",
+        "screen.record",
+        "contacts.add",
+        "calendar.add",
+        "reminders.add",
+        "sms.send"
+      ]
+    }
+  },
+  "skills": {
+    "install": {
+      "nodeManager": "npm"
+    }
+  },
+  "plugins": {
+    "entries": {}
+  }
+}
