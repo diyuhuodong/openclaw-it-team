@@ -10,8 +10,10 @@
 4. [配置文件](#配置文件)
 5. [配对与授权](#配对与授权)
 6. [群组配置](#群组配置)
-7. [问题排查](#问题排查)
-8. [最终配置](#最终配置)
+7. [心跳配置](#心跳配置)
+8. [A2A 派发](#a2a-派发)
+9. [问题排查](#问题排查)
+10. [最终配置](#最终配置)
 
 ---
 
@@ -196,6 +198,23 @@ openclaw pairing approve telegram <CODE>
 
 当 Bot 关闭隐私模式后，所有群消息都会被 Bot 接收。OpenClaw 根据 `bindings` 配置决定哪个 Agent 响应。
 
+### requireMention 配置
+
+控制是否需要 @ 机器人才能响应：
+
+| 配置 | 效果 |
+|------|------|
+| `requireMention: false` | 所有消息都能触发响应（但所有 Bot 都会回复）|
+| `requireMention: true` | 只有 @ 某个 Bot 时才响应（推荐）|
+
+```json
+"groups": {
+  "*": {
+    "requireMention": true
+  }
+}
+```
+
 ### 绑定方式
 
 有两种方式：
@@ -233,6 +252,93 @@ openclaw pairing approve telegram <CODE>
 
 - 群内所有消息都触发指定 Agent
 - 需要配合 `mentionPatterns` 或 requireMention 使用
+
+---
+
+## 心跳配置
+
+### 两种模式
+
+| 模式 | 说明 |
+|------|------|
+| 内部巡检 | Agent 内部定时检查，不发消息（HEARTBEAT.md 定义）|
+| 外部通知 | 定期向群里发消息 |
+
+### 配置示例
+
+```json
+{
+  "id": "pm",
+  "heartbeat": {
+    "every": "30m",
+    "target": "telegram",
+    "to": "-5123821087"
+  }
+}
+```
+
+### 建议间隔
+
+| Agent | 间隔 | 说明 |
+|-------|------|------|
+| PM | 30m | 检查需求池、任务状态 |
+| RD | 20m | 检查开发进度、提测状态 |
+| QA | 30m | 检查测试进度、Bug 状态 |
+| CE | 30m | 扫描情绪、发布正向总结 |
+
+---
+
+## A2A 派发
+
+### 派发方式
+
+有两种派发任务的方式：
+
+| 方式 | 说明 | 优点 |
+|------|------|------|
+| 群里 @ 派发 | 在群里 @ 某个 Agent | 简单直接，所有人可见 |
+| A2A 自动派发 | PM 通过内部机制派发给 RD/QA | 自动化、可追踪 |
+
+### A2A 派发配置
+
+确保配置了以下内容：
+
+```json
+{
+  "tools": {
+    "agentToAgent": {
+      "enabled": true,
+      "allow": ["pm", "rd", "qa", "ce"]
+    }
+  },
+  "session": {
+    "visibility": "all"
+  }
+}
+```
+
+### subagents 配置
+
+确保 PM 可以调用其他 Agent：
+
+```json
+{
+  "id": "pm",
+  "subagents": {
+    "allowAgents": ["rd", "qa", "ce"]
+  }
+}
+```
+
+### 常见问题
+
+**问题**：A2A 派发报错 "权限被拒"
+
+**解决**：检查 `tools.agentToAgent.allow` 是否包含目标 Agent
+
+**问题**：sessions_spawn 报错
+
+**解决**：确保配置了 `tools.agentToAgent.enabled: true` 和 `session.visibility: "all"`
 
 ---
 
@@ -287,6 +393,33 @@ openclaw gateway restart
 ```json
 "groupPolicy": "open"
 ```
+
+### 问题7：多个 Bot 都回复（想要 @ 谁回复谁）
+
+**原因**：`requireMention: false` 导致所有 Bot 都响应
+
+**解决**：设置为 `requireMention: true`
+```json
+"groups": {
+  "*": {
+    "requireMention": true
+  }
+}
+```
+
+**效果**：
+- 所有 Bot 都能看到消息
+- 只有被 @ 的 Bot 才会回复
+- 其他 Bot 只是旁观，不响应
+
+### 问题8：A2A 派发失败
+
+**可能原因**：
+1. `tools.agentToAgent` 未开启
+2. `session.visibility` 配置缺失
+3. subagents 未配置
+
+**解决**：参考 [A2A 派发](#a2a-派发) 部分配置
 
 ---
 
@@ -367,4 +500,4 @@ openclaw logs --follow
 
 ---
 
-*本文档最后更新于 2026-03-15*
+*本文档最后更新于 2026-03-16*
